@@ -1,0 +1,7 @@
+{
+  "pck_name": "ExampleMod",
+  "name": "ExampleMod",
+  "author": "local-dev",
+  "description": "Tutorial mod with toggleable gameplay examples.",
+  "version": "0.1.0"
+}
