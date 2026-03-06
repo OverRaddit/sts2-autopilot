@@ -23,12 +23,16 @@ public static class GambleButtonFeature
     private const string GambleDialogName = "ExampleModGambleDialog";
     private const decimal DefaultWagerFraction = 0.25m;
 
+    /// <summary>
+    /// Adds (or removes) the gamble button whenever top bar is initialized.
+    /// </summary>
     public static void AttachToTopBar(NTopBar topBar)
     {
         var existingButton = topBar.FindChild(GambleButtonName, recursive: true, owned: false);
         if (!FeatureSettingsStore.Current.EnableGambleButton)
         {
             // If user disabled the feature in menu, remove button on next top-bar rebuild.
+            Log.Info("[ExampleMod] Gamble feature disabled; ensuring button is removed.");
             existingButton?.QueueFree();
             return;
         }
@@ -57,6 +61,9 @@ public static class GambleButtonFeature
         Log.Info("[ExampleMod] Added Gamble button to top bar.");
     }
 
+    /// <summary>
+    /// Creates the clickable top-bar gamble button.
+    /// </summary>
     private static Button CreateGambleButton()
     {
         var button = new Button
@@ -74,37 +81,49 @@ public static class GambleButtonFeature
         return button;
     }
 
+    /// <summary>
+    /// Validates local player/gold and opens wager dialog.
+    /// </summary>
     private static void OnGambleButtonPressed(Button sourceButton)
     {
+        Log.Info("[ExampleMod] Gamble button pressed.");
         var runState = RunManager.Instance.DebugOnlyGetState();
         var localPlayer = LocalContext.GetMe(runState);
         if (localPlayer == null)
         {
+            Log.Warn("[ExampleMod] Gamble failed: local player not found.");
             ShowFeedback("Gamble failed: no local player.");
             return;
         }
 
         if (localPlayer.Gold <= 0)
         {
+            Log.Info("[ExampleMod] Gamble blocked: player has no gold.");
             ShowFeedback("No gold to gamble.");
             return;
         }
 
+        Log.Info($"[ExampleMod] Opening wager dialog with current gold={localPlayer.Gold}.");
         ShowWagerDialog(sourceButton, localPlayer.Gold);
     }
 
+    /// <summary>
+    /// Renders wager picker dialog and starts gamble task on confirmation.
+    /// </summary>
     private static void ShowWagerDialog(Button sourceButton, int currentGold)
     {
         Node? gameRoot = sourceButton.GetTree()?.Root;
         gameRoot ??= NGame.Instance;
         if (gameRoot == null)
         {
+            Log.Error("[ExampleMod] Gamble failed: could not resolve UI root.");
             ShowFeedback("Gamble failed: UI root unavailable.");
             return;
         }
 
         if (gameRoot.FindChild(GambleDialogName, recursive: true, owned: false) is ConfirmationDialog existingDialog)
         {
+            Log.Info("[ExampleMod] Wager dialog already open; focusing existing dialog.");
             existingDialog.GrabFocus();
             return;
         }
@@ -161,6 +180,7 @@ public static class GambleButtonFeature
         dialog.Confirmed += () =>
         {
             var wager = ClampWager((int)Math.Round(wagerInput.Value), currentGold);
+            Log.Info($"[ExampleMod] Gamble confirmed with wager={wager} (currentGold={currentGold}).");
             dialog.QueueFree();
             TaskHelper.RunSafely(ExecuteGambleAsync(wager));
         };
@@ -171,12 +191,16 @@ public static class GambleButtonFeature
         wagerInput.CallDeferred(Control.MethodName.GrabFocus);
     }
 
+    /// <summary>
+    /// Performs the 50/50 gamble and applies resulting gold change.
+    /// </summary>
     private static async Task ExecuteGambleAsync(int requestedWager)
     {
         var runState = RunManager.Instance.DebugOnlyGetState();
         var localPlayer = LocalContext.GetMe(runState);
         if (localPlayer == null)
         {
+            Log.Warn("[ExampleMod] ExecuteGambleAsync failed: local player not found.");
             ShowFeedback("Gamble failed: no local player.");
             return;
         }
@@ -184,30 +208,40 @@ public static class GambleButtonFeature
         var currentGold = localPlayer.Gold;
         if (currentGold <= 0)
         {
+            Log.Info("[ExampleMod] ExecuteGambleAsync blocked: player has no gold.");
             ShowFeedback("No gold to gamble.");
             return;
         }
 
         var wager = ClampWager(requestedWager, currentGold);
         var didWin = Random.Shared.Next(2) == 0;
+        Log.Info($"[ExampleMod] Resolving gamble. requested={requestedWager}, clamped={wager}, goldBefore={currentGold}, didWin={didWin}.");
 
         if (didWin)
         {
             await PlayerCmd.GainGold(wager, localPlayer);
+            Log.Info($"[ExampleMod] Gamble win applied: +{wager} gold.");
             ShowFeedback($"WIN +{wager}g (bet {wager})");
         }
         else
         {
             await PlayerCmd.LoseGold(wager, localPlayer);
+            Log.Info($"[ExampleMod] Gamble loss applied: -{wager} gold.");
             ShowFeedback($"LOSS -{wager}g");
         }
     }
 
+    /// <summary>
+    /// Picks default wager as 25% of current gold, then clamps valid range.
+    /// </summary>
     private static int ComputeDefaultWager(int currentGold)
     {
         return ClampWager((int)Math.Floor(currentGold * (double)DefaultWagerFraction), currentGold);
     }
 
+    /// <summary>
+    /// Ensures wager always stays between 1 and current gold.
+    /// </summary>
     private static int ClampWager(int wager, int currentGold)
     {
         wager = Math.Max(wager, 1);
@@ -215,8 +249,12 @@ public static class GambleButtonFeature
         return wager;
     }
 
+    /// <summary>
+    /// Shows user-facing feedback and mirrors the same text into logs for easier debugging.
+    /// </summary>
     private static void ShowFeedback(string text)
     {
+        Log.Info($"[ExampleMod] Gamble feedback: {text}");
         var vfx = NFullscreenTextVfx.Create($"[Gamble] {text}");
         if (vfx != null)
         {
@@ -228,6 +266,9 @@ public static class GambleButtonFeature
 [HarmonyPatch(typeof(NTopBar), nameof(NTopBar.Initialize))]
 public static class NTopBarInitializeGamblePatch
 {
+    /// <summary>
+    /// Attaches gamble button after top bar initializes.
+    /// </summary>
     public static void Postfix(NTopBar __instance)
     {
         try

@@ -6,22 +6,28 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>ExampleMod</AssemblyName>
     <RootNamespace>ExampleMod</RootNamespace>
+    <Sts2InstallDir Condition="'$(Sts2InstallDir)' == '' and '$(STS2_INSTALL_DIR)' != ''">$(STS2_INSTALL_DIR)</Sts2InstallDir>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="sts2">
-      <HintPath>../../../data_sts2_windows_x86_64/sts2.dll</HintPath>
+      <HintPath>$(Sts2InstallDir)/data_sts2_windows_x86_64/sts2.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="GodotSharp">
-      <HintPath>../../../data_sts2_windows_x86_64/GodotSharp.dll</HintPath>
+      <HintPath>$(Sts2InstallDir)/data_sts2_windows_x86_64/GodotSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>../../../data_sts2_windows_x86_64/0Harmony.dll</HintPath>
+      <HintPath>$(Sts2InstallDir)/data_sts2_windows_x86_64/0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="ValidateSts2InstallDir" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(Sts2InstallDir)' == ''" Text="Sts2InstallDir is not set. Define STS2_INSTALL_DIR in .env or pass -p:Sts2InstallDir=/path/to/Slay the Spire 2." />
+    <Error Condition="!Exists('$(Sts2InstallDir)/data_sts2_windows_x86_64/sts2.dll')" Text="Could not find sts2.dll under '$(Sts2InstallDir)/data_sts2_windows_x86_64'. Check STS2_INSTALL_DIR in .env." />
+  </Target>
 
   <ItemGroup>
     <Compile Remove="decompile/**/*.cs" />

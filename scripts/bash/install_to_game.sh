@@ -3,9 +3,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/_load_env.sh"
+
 MOD_BASENAME="${MOD_BASENAME:-ExampleMod}"
 DIST_DIR="${PROJECT_ROOT}/dist/${MOD_BASENAME}"
-GAME_MOD_DIR="${1:-${PROJECT_ROOT}/../../../mods/${MOD_BASENAME}}"
+
+if [[ -z "${STS2_INSTALL_DIR:-}" ]]; then
+  echo "STS2_INSTALL_DIR is not set. Create ${PROJECT_ROOT}/.env from .env.example first." >&2
+  exit 1
+fi
+
+GAME_MOD_DIR="${1:-${STS2_INSTALL_DIR}/mods/${MOD_BASENAME}}"
 
 if [[ ! -f "${DIST_DIR}/${MOD_BASENAME}.dll" ]]; then
   echo "Missing ${DIST_DIR}/${MOD_BASENAME}.dll. Run scripts/bash/build_and_stage.sh first." >&2

@@ -28,6 +28,7 @@ Official guides:
 Notes:
 - This repo’s conda environment installs Python + dotnet for you.
 - `./scripts/bash/setup_godot_cli.sh` downloads a local Godot CLI binary into `.tools/`.
+- You must set `STS2_INSTALL_DIR` in a local `.env` file (see below).
 
 ## Tutorial examples in this mod
 
@@ -39,27 +40,36 @@ All gameplay examples are disabled by default and controlled from a main-menu bu
 4. Give Ironclad +1 Strength at the start of each combat
 5. Add a main-menu UI for toggling all features on/off
 
-## Where to clone this repository
+## Clone location
 
-For the included `.csproj` references to work without edits, clone this project under the game install directory:
+You can clone this repository anywhere.
 
-- Linux/WSL path: `/mnt/c/SteamLibrary/steamapps/common/Slay the Spire 2/modding/projects/ExampleMod`
-
-Why: `ExampleMod.csproj` references game DLLs using a relative path:
-- `../../../data_sts2_windows_x86_64/sts2.dll`
-
-If you clone elsewhere, update the `<HintPath>` entries in `ExampleMod.csproj`.
-
-Create the parent folders first, then clone:
+Example:
 
 ```bash
-# If your Steam library is on D:, set STS2_DIR to /mnt/d/... instead.
-STS2_DIR="/mnt/c/SteamLibrary/steamapps/common/Slay the Spire 2"
-mkdir -p "${STS2_DIR}/modding/projects"
-cd "${STS2_DIR}/modding/projects"
-git clone <your-repo-url> ExampleMod
+mkdir -p ~/dev/sts2
+cd ~/dev/sts2
+git clone https://github.com/customjack/sts2_ExampleMod ExampleMod
 cd ExampleMod
 ```
+
+## .env setup (required)
+
+Create a local `.env` from the template and set your game install path:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
+
+```bash
+STS2_INSTALL_DIR='C:\Program Files (x86)\Steam\steamapps\common\Slay the Spire 2'
+```
+
+Notes:
+- You can use either a Windows path (`C:\...`) or a WSL path (`/mnt/c/...`).
+- Bash scripts in `scripts/bash/` load `.env` automatically.
 
 ## Project layout
 
@@ -83,9 +93,8 @@ cd ExampleMod
 #### Linux/WSL
 
 ```bash
-# If your Steam library is on D:, set STS2_DIR to /mnt/d/... instead.
-STS2_DIR="/mnt/c/SteamLibrary/steamapps/common/Slay the Spire 2"
-cd "${STS2_DIR}/modding/projects/ExampleMod"
+cd /path/to/ExampleMod
+cp .env.example .env   # once, then edit STS2_INSTALL_DIR
 ./scripts/bash/setup_env.sh
 source ./scripts/bash/activate_env.sh
 ```
@@ -136,8 +145,8 @@ After changing manifest or image, rebuild the PCK:
 ```
 
 Installed mod output goes to:
-- `mods/ExampleMod/ExampleMod.dll`
-- `mods/ExampleMod/ExampleMod.pck`
+- `${STS2_INSTALL_DIR}/mods/ExampleMod/ExampleMod.dll`
+- `${STS2_INSTALL_DIR}/mods/ExampleMod/ExampleMod.pck`
 
 ## Using the toggle menu
 

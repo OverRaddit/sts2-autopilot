@@ -15,20 +15,25 @@ public static class ModBootstrap
     private static bool _initialized;
     private static Harmony? _harmony;
 
+    /// <summary>
+    /// Initializes mod runtime once per process.
+    /// </summary>
     public static void Initialize()
     {
         if (_initialized)
         {
+            Log.Info("[ExampleMod] ModBootstrap.Initialize skipped (already initialized).");
             return;
         }
 
         _initialized = true;
+        Log.Info("[ExampleMod] Mod bootstrap starting.");
 
         FeatureSettingsStore.Initialize();
         Log.Info($"[ExampleMod] Loaded settings: {FeatureSettingsStore.Current}");
 
         _harmony = new Harmony(HarmonyId);
         _harmony.PatchAll();
-        Log.Info("[ExampleMod] Harmony patches applied.");
+        Log.Info($"[ExampleMod] Harmony patches applied with id '{HarmonyId}'.");
     }
 }

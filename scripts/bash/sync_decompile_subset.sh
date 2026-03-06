@@ -3,7 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-SOURCE_ROOT="${PROJECT_ROOT}/../../decompile"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/_load_env.sh"
+
+SOURCE_ROOT_DEFAULT="${PROJECT_ROOT}/../../decompile"
+if [[ -n "${STS2_INSTALL_DIR:-}" && -d "${STS2_INSTALL_DIR}/modding/decompile" ]]; then
+  SOURCE_ROOT_DEFAULT="${STS2_INSTALL_DIR}/modding/decompile"
+fi
+SOURCE_ROOT="${SOURCE_ROOT:-${SOURCE_ROOT_DEFAULT}}"
 TARGET_ROOT="${PROJECT_ROOT}/decompile"
 
 FILES=(
