@@ -7,7 +7,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.ValueProps;
 
-namespace ExampleMod.Features.Balance;
+namespace ExampleMod.Features;
 
 /// <summary>
 /// Example 3: override StrikeIronclad's base damage variable.

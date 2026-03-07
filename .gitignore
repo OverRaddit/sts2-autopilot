@@ -8,4 +8,5 @@ __pycache__/
 *.suo
 *.tmp
 *.log
-.env
+# local developer config (never commit)
+/.env

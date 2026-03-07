@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Relics;
 
-namespace ExampleMod.Features.Balance;
+namespace ExampleMod.Features;
 
 /// <summary>
 /// Example 2: change Burning Blood's heal amount.

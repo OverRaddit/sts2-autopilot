@@ -55,36 +55,24 @@ cd ExampleMod
 
 ## .env setup (required)
 
-Create a local `.env` from the template and set your game install path:
+You must create a local `.env` from `.env.example` before running scripts.
+
+Do this once:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set:
+Then edit `.env` and set:
 
 ```bash
 STS2_INSTALL_DIR='C:\Program Files (x86)\Steam\steamapps\common\Slay the Spire 2'
 ```
 
 Notes:
+- `.env` is local-only and gitignored by default.
 - You can use either a Windows path (`C:\...`) or a WSL path (`/mnt/c/...`).
 - Bash scripts in `scripts/bash/` load `.env` automatically.
-
-## Project layout
-
-- `src/ModEntry.cs`: mod entry point (`[ModInitializer]`)
-- `src/Core/`: bootstrap + persisted feature settings
-- `src/Features/MainMenu/`: adds main-menu config UI button + toggle dialog
-- `src/Features/GambleButton/`: top-bar gamble button example
-- `src/Features/Balance/`: Burning Blood/Strike/Strength examples
-- `mod_manifest.json`: mod metadata shown in the in-game mod list
-- `mod_image.png`: mod preview image shown in the in-game mod list
-- `scripts/bash/`: Linux/WSL shell scripts
-- `scripts/common/`: shared packer internals
-- `scripts/tools/log_viewer/`: local web log viewer (no Godot required)
-- `decompile/`: curated decompile files used by tutorial examples
-- `environment.yml`: conda environment definition
 
 ## Environment setup
 
@@ -102,36 +90,6 @@ source ./scripts/bash/activate_env.sh
 ### Option B: System tools
 
 Use the guides in the `Prerequisites` section, then ensure tools are on `PATH`.
-
-## Mod manifest and preview image
-
-Edit `mod_manifest.json` to change how your mod appears:
-
-```json
-{
-  "pck_name": "ExampleMod",
-  "name": "ExampleMod",
-  "author": "local-dev",
-  "description": "Tutorial mod with toggleable gameplay examples.",
-  "version": "0.1.0"
-}
-```
-
-Notes:
-- `pck_name` should match your mod package/base name (and usually your DLL/PCK names).
-- `name`, `author`, `description`, and `version` are display metadata.
-
-Preview image:
-- Use `mod_image.png` at the project root.
-- This repo already includes a working `mod_image.png` preview image.
-- Replace it with your own PNG to change the mod card image.
-
-After changing manifest or image, rebuild the PCK:
-
-```bash
-./scripts/bash/make_pck.sh
-./scripts/bash/install_to_game.sh
-```
 
 ## Build / pack / install
 
@@ -169,6 +127,36 @@ To refresh from your local full decompile dump:
 
 ```bash
 ./scripts/bash/sync_decompile_subset.sh
+```
+
+## Mod manifest and preview image
+
+Edit `mod_manifest.json` to change how your mod appears:
+
+```json
+{
+  "pck_name": "ExampleMod",
+  "name": "ExampleMod",
+  "author": "local-dev",
+  "description": "Tutorial mod with toggleable gameplay examples.",
+  "version": "0.1.0"
+}
+```
+
+Notes:
+- `pck_name` should match your mod package/base name (and usually your DLL/PCK names).
+- `name`, `author`, `description`, and `version` are display metadata.
+
+Preview image:
+- Use `mod_image.png` at the project root.
+- This repo already includes a working `mod_image.png` preview image.
+- Replace it with your own PNG to change the mod card image.
+
+After changing manifest or image, rebuild the PCK:
+
+```bash
+./scripts/bash/make_pck.sh
+./scripts/bash/install_to_game.sh
 ```
 
 ## View logs without Godot

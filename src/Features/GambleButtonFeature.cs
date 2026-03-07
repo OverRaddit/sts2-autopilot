@@ -12,7 +12,7 @@ using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Vfx;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace ExampleMod.Features.GambleButton;
+namespace ExampleMod.Features;
 
 /// <summary>
 /// Example 1: add a top-bar button that lets player pick a wager and run a 50/50 gamble.

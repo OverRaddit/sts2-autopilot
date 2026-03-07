@@ -10,7 +10,7 @@ using MegaCrit.Sts2.Core.Models.Characters;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace ExampleMod.Features.Balance;
+namespace ExampleMod.Features;
 
 /// <summary>
 /// Example 4: add +1 Strength to local Ironclad each combat start.
