@@ -23,7 +23,7 @@ Official guides:
 - Git install: [Git install guide](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 - Miniconda install: [Miniconda install guide](https://www.anaconda.com/docs/getting-started/miniconda/install)
 - .NET 9 SDK (only if not using conda-managed dotnet): [.NET on Linux](https://learn.microsoft.com/dotnet/core/install/linux)
-- Godot 4.5.1 release downloads: [Godot 4.5.1](https://github.com/godotengine/godot/releases/tag/4.5.1-stable)
+- Godot 4.5.1 release downloads (only if not using setup godot script): [Godot 4.5.1](https://github.com/godotengine/godot/releases/tag/4.5.1-stable)
 
 Notes:
 - This repo’s conda environment installs Python + dotnet for you.
