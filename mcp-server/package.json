@@ -1,0 +1,27 @@
+{
+  "name": "sts2-mcp-server",
+  "description": "MCP server for STS2 LLM auto-play",
+  "version": "0.1.0",
+  "main": "dist/server.js",
+  "bin": {
+    "sts2-mcp-server": "dist/server.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "dev": "npm run build:watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.1",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.14",
+    "tsup": "^8.4.0",
+    "typescript": "^5.0.0"
+  }
+}

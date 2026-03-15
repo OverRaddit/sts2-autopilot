@@ -8,5 +8,9 @@ __pycache__/
 *.suo
 *.tmp
 *.log
+# MCP server
+mcp-server/node_modules/
+mcp-server/dist/
+
 # local developer config (never commit)
 /.env

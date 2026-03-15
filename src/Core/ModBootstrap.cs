@@ -1,3 +1,4 @@
+using ExampleMod.Automation;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 
@@ -35,5 +36,7 @@ public static class ModBootstrap
         _harmony = new Harmony(HarmonyId);
         _harmony.PatchAll();
         Log.Info($"[ExampleMod] Harmony patches applied with id '{HarmonyId}'.");
+
+        WebSocketClient.Instance.Initialize();
     }
 }

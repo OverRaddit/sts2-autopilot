@@ -1,0 +1,685 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using Godot;
+using MegaCrit.Sts2.Core.Assets;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Relics;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
+using MegaCrit.Sts2.Core.Saves.Runs;
+
+namespace MegaCrit.Sts2.Core.Models;
+
+public abstract class RelicModel : AbstractModel
+{
+	private static readonly StringName _isUsed = new StringName("is_used");
+
+	private static readonly StringName _pulse = new StringName("pulse");
+
+	private static readonly StringName _isWaxStr = new StringName("is_wax");
+
+	protected const string _locTable = "relics";
+
+	private string? _resolvedBigIconPath;
+
+	private Player? _owner;
+
+	private bool _isWax;
+
+	private bool _isMelted;
+
+	private DynamicVarSet? _dynamicVars;
+
+	private int _floorAddedToDeck;
+
+	private RelicStatus _status;
+
+	[CompilerGenerated]
+	private Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>>? m_Flashed;
+
+	[CompilerGenerated]
+	private Action? m_DisplayAmountChanged;
+
+	[CompilerGenerated]
+	private Action? m_StatusChanged;
+
+	private RelicModel? _canonicalInstance;
+
+	public virtual LocString Title
+	{
+		get
+		{
+			LocString locString = new LocString("relics", base.Id.Entry + ".title");
+			if (IsWax)
+			{
+				LocString waxRelicPrefix = ToyBox.WaxRelicPrefix;
+				waxRelicPrefix.Add("Title", locString);
+				locString = waxRelicPrefix;
+			}
+			return locString;
+		}
+	}
+
+	public LocString Flavor => new LocString("relics", base.Id.Entry + ".flavor");
+
+	protected LocString EventDescription => LocString.GetIfExists("relics", base.Id.Entry + ".eventDescription") ?? Description;
+
+	public LocString Description => new LocString("relics", base.Id.Entry + ".description");
+
+	protected LocString SelectionScreenPrompt
+	{
+		get
+		{
+			LocString locString = new LocString("relics", base.Id.Entry + ".selectionScreenPrompt");
+			DynamicVars.AddTo(locString);
+			return locString;
+		}
+	}
+
+	public LocString DynamicEventDescription
+	{
+		get
+		{
+			LocString eventDescription = EventDescription;
+			DynamicVars.AddTo(eventDescription);
+			eventDescription.Add("energyPrefix", EnergyIconHelper.GetPrefix(this));
+			eventDescription.Add("singleStarIcon", "[img]res://images/packed/sprite_fonts/star_icon.png[/img]");
+			return eventDescription;
+		}
+	}
+
+	public LocString DynamicDescription
+	{
+		get
+		{
+			//IL_0045: Unknown result type (might be due to invalid IL or missing references)
+			//IL_004a: Unknown result type (might be due to invalid IL or missing references)
+			LocString description = Description;
+			DynamicVars.AddTo(description);
+			string prefix = EnergyIconHelper.GetPrefix(this);
+			description.Add("energyPrefix", prefix);
+			description.Add("singleStarIcon", "[img]res://images/packed/sprite_fonts/star_icon.png[/img]");
+			System.Collections.Generic.IEnumerator<KeyValuePair<string, object>> enumerator = ((System.Collections.Generic.IEnumerable<KeyValuePair<string, object>>)description.Variables).GetEnumerator();
+			try
+			{
+				while (((System.Collections.IEnumerator)enumerator).MoveNext())
+				{
+					if (enumerator.Current.Value is EnergyVar energyVar)
+					{
+						energyVar.ColorPrefix = prefix;
+					}
+				}
+				return description;
+			}
+			finally
+			{
+				((System.IDisposable)enumerator)?.Dispose();
+			}
+		}
+	}
+
+	protected LocString? AdditionalRestSiteHealText
+	{
+		get
+		{
+			LocString ifExists = LocString.GetIfExists("relics", base.Id.Entry + ".additionalRestSiteHealText");
+			if (ifExists != null)
+			{
+				DynamicVars.AddTo(ifExists);
+			}
+			return ifExists;
+		}
+	}
+
+	protected virtual string IconBaseName => base.Id.Entry.ToLowerInvariant();
+
+	public virtual string PackedIconPath => ImageHelper.GetImagePath("atlases/relic_atlas.sprites/" + IconBaseName + ".tres");
+
+	protected virtual string PackedIconOutlinePath => ImageHelper.GetImagePath("atlases/relic_outline_atlas.sprites/" + IconBaseName + ".tres");
+
+	protected virtual string BigIconPath => ImageHelper.GetImagePath("relics/" + IconBaseName + ".png");
+
+	private string BigBetaIconPath => ImageHelper.GetImagePath("relics/beta/" + IconBaseName + ".png");
+
+	private static string MissingIconPath => ImageHelper.GetImagePath("powers/missing_power.png");
+
+	public string IconPath => PackedIconPath;
+
+	public Texture2D Icon => ResourceLoader.Load<Texture2D>(PackedIconPath, (string)null, (CacheMode)1);
+
+	public Texture2D IconOutline => ResourceLoader.Load<Texture2D>(PackedIconOutlinePath, (string)null, (CacheMode)1);
+
+	public Texture2D BigIcon => PreloadManager.Cache.GetTexture2D(ResolvedBigIconPath);
+
+	private string ResolvedBigIconPath
+	{
+		get
+		{
+			if (_resolvedBigIconPath != null)
+			{
+				return _resolvedBigIconPath;
+			}
+			if (ResourceLoader.Exists(BigIconPath, ""))
+			{
+				_resolvedBigIconPath = BigIconPath;
+			}
+			else if (ResourceLoader.Exists(BigBetaIconPath, ""))
+			{
+				_resolvedBigIconPath = BigBetaIconPath;
+			}
+			else
+			{
+				_resolvedBigIconPath = MissingIconPath;
+			}
+			return _resolvedBigIconPath;
+		}
+	}
+
+	public abstract RelicRarity Rarity { get; }
+
+	public RelicPoolModel Pool => Enumerable.First<RelicPoolModel>(ModelDb.AllRelicPools, (Func<RelicPoolModel, bool>)([CompilerGenerated] (RelicPoolModel p) => p.AllRelicIds.Contains(base.Id)));
+
+	public bool IsTradable
+	{
+		get
+		{
+			if (IsUsedUp)
+			{
+				return false;
+			}
+			if (HasUponPickupEffect)
+			{
+				return false;
+			}
+			if (IsMelted)
+			{
+				return false;
+			}
+			if (SpawnsPets)
+			{
+				return false;
+			}
+			RelicRarity rarity = Rarity;
+			if ((rarity == RelicRarity.Starter || (uint)(rarity - 6) <= 1u) ? true : false)
+			{
+				return false;
+			}
+			return true;
+		}
+	}
+
+	public Player Owner
+	{
+		get
+		{
+			AssertMutable();
+			return _owner;
+		}
+		set
+		{
+			//IL_0031: Unknown result type (might be due to invalid IL or missing references)
+			AssertMutable();
+			if (_owner != null && _owner != value)
+			{
+				throw new InvalidOperationException("Cannot move relic from " + base.Id.Entry + " one owner to another");
+			}
+			_owner = value;
+		}
+	}
+
+	public virtual bool IsUsedUp => false;
+
+	public virtual bool HasUponPickupEffect => false;
+
+	public virtual bool SpawnsPets => false;
+
+	public virtual bool IsStackable => false;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public bool IsWax
+	{
+		get
+		{
+			return _isWax;
+		}
+		set
+		{
+			AssertMutable();
+			_isWax = value;
+		}
+	}
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public bool IsMelted
+	{
+		get
+		{
+			return _isMelted;
+		}
+		set
+		{
+			AssertMutable();
+			_isMelted = value;
+		}
+	}
+
+	public virtual bool AddsPet => false;
+
+	[field: CompilerGenerated]
+	public int StackCount
+	{
+		[CompilerGenerated]
+		get;
+		[CompilerGenerated]
+		private set;
+	} = 1;
+
+	public DynamicVarSet DynamicVars
+	{
+		get
+		{
+			if (_dynamicVars != null)
+			{
+				return _dynamicVars;
+			}
+			_dynamicVars = new DynamicVarSet(CanonicalVars);
+			_dynamicVars.InitializeWithOwner(this);
+			return _dynamicVars;
+		}
+	}
+
+	protected virtual System.Collections.Generic.IEnumerable<DynamicVar> CanonicalVars => System.Array.Empty<DynamicVar>();
+
+	public virtual int MerchantCost => Rarity switch
+	{
+		RelicRarity.Common => 200, 
+		RelicRarity.Uncommon => 250, 
+		RelicRarity.Rare => 300, 
+		RelicRarity.Shop => 225, 
+		RelicRarity.Ancient => 999, 
+		RelicRarity.Starter => 999, 
+		RelicRarity.Event => 999, 
+		RelicRarity.None => 1, 
+		_ => throw new InvalidOperationException($"Relic {base.Id} has invalid merchant rarity {Rarity}."), 
+	};
+
+	public int FloorAddedToDeck
+	{
+		get
+		{
+			return _floorAddedToDeck;
+		}
+		set
+		{
+			AssertMutable();
+			_floorAddedToDeck = value;
+		}
+	}
+
+	public RelicStatus Status
+	{
+		get
+		{
+			return _status;
+		}
+		set
+		{
+			AssertMutable();
+			if (_status != value)
+			{
+				_status = value;
+				Action? obj = this.StatusChanged;
+				if (obj != null)
+				{
+					obj.Invoke();
+				}
+			}
+		}
+	}
+
+	public virtual bool ShowCounter => false;
+
+	public virtual int DisplayAmount => 0;
+
+	public virtual string FlashSfx => "event:/sfx/ui/relic_activate_general";
+
+	public virtual bool ShouldFlashOnPlayer => true;
+
+	public HoverTip HoverTip
+	{
+		get
+		{
+			LocString locString = DynamicDescription;
+			if (IsMelted)
+			{
+				locString = new LocString("gameplay_ui", "RELIC_IS_MELTED");
+				locString.Add("description", DynamicDescription);
+			}
+			else if (IsUsedUp && base.IsMutable)
+			{
+				locString = new LocString("gameplay_ui", "RELIC_USED_UP");
+				locString.Add("description", DynamicDescription);
+			}
+			HoverTip result = new HoverTip(Title, locString);
+			result.SetCanonicalModel(CanonicalInstance);
+			return result;
+		}
+	}
+
+	protected virtual System.Collections.Generic.IEnumerable<IHoverTip> ExtraHoverTips => System.Array.Empty<IHoverTip>();
+
+	public System.Collections.Generic.IEnumerable<IHoverTip> HoverTipsExcludingRelic => ExtraHoverTips;
+
+	public System.Collections.Generic.IEnumerable<IHoverTip> HoverTips
+	{
+		get
+		{
+			int num = 1;
+			List<IHoverTip> obj = new List<IHoverTip>(num);
+			CollectionsMarshal.SetCount<IHoverTip>(obj, num);
+			System.Span<IHoverTip> span = CollectionsMarshal.AsSpan<IHoverTip>(obj);
+			int num2 = 0;
+			span[num2] = HoverTip;
+			List<IHoverTip> val = obj;
+			val.AddRange(ExtraHoverTips);
+			return (System.Collections.Generic.IEnumerable<IHoverTip>)val;
+		}
+	}
+
+	public RelicModel CanonicalInstance
+	{
+		get
+		{
+			if (!base.IsMutable)
+			{
+				return this;
+			}
+			return _canonicalInstance;
+		}
+		private set
+		{
+			AssertMutable();
+			_canonicalInstance = value;
+		}
+	}
+
+	[field: CompilerGenerated]
+	public bool HasBeenRemovedFromState
+	{
+		[CompilerGenerated]
+		get;
+		[CompilerGenerated]
+		private set;
+	}
+
+	public override bool ShouldReceiveCombatHooks => true;
+
+	public event Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>>? Flashed
+	{
+		[CompilerGenerated]
+		add
+		{
+			Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>> val = this.m_Flashed;
+			Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>> val2;
+			do
+			{
+				val2 = val;
+				Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>> val3 = (Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>>)(object)System.Delegate.Combine((System.Delegate)(object)val2, (System.Delegate)(object)value);
+				val = Interlocked.CompareExchange<Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>>>(ref this.m_Flashed, val3, val2);
+			}
+			while (val != val2);
+		}
+		[CompilerGenerated]
+		remove
+		{
+			Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>> val = this.m_Flashed;
+			Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>> val2;
+			do
+			{
+				val2 = val;
+				Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>> val3 = (Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>>)(object)System.Delegate.Remove((System.Delegate)(object)val2, (System.Delegate)(object)value);
+				val = Interlocked.CompareExchange<Action<RelicModel, System.Collections.Generic.IEnumerable<Creature>>>(ref this.m_Flashed, val3, val2);
+			}
+			while (val != val2);
+		}
+	}
+
+	public event Action DisplayAmountChanged
+	{
+		[CompilerGenerated]
+		add
+		{
+			//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0016: Expected O, but got Unknown
+			Action val = this.m_DisplayAmountChanged;
+			Action val2;
+			do
+			{
+				val2 = val;
+				Action val3 = (Action)System.Delegate.Combine((System.Delegate)(object)val2, (System.Delegate)(object)value);
+				val = Interlocked.CompareExchange<Action>(ref this.m_DisplayAmountChanged, val3, val2);
+			}
+			while (val != val2);
+		}
+		[CompilerGenerated]
+		remove
+		{
+			//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0016: Expected O, but got Unknown
+			Action val = this.m_DisplayAmountChanged;
+			Action val2;
+			do
+			{
+				val2 = val;
+				Action val3 = (Action)System.Delegate.Remove((System.Delegate)(object)val2, (System.Delegate)(object)value);
+				val = Interlocked.CompareExchange<Action>(ref this.m_DisplayAmountChanged, val3, val2);
+			}
+			while (val != val2);
+		}
+	}
+
+	public event Action StatusChanged
+	{
+		[CompilerGenerated]
+		add
+		{
+			//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0016: Expected O, but got Unknown
+			Action val = this.m_StatusChanged;
+			Action val2;
+			do
+			{
+				val2 = val;
+				Action val3 = (Action)System.Delegate.Combine((System.Delegate)(object)val2, (System.Delegate)(object)value);
+				val = Interlocked.CompareExchange<Action>(ref this.m_StatusChanged, val3, val2);
+			}
+			while (val != val2);
+		}
+		[CompilerGenerated]
+		remove
+		{
+			//IL_0010: Unknown result type (might be due to invalid IL or missing references)
+			//IL_0016: Expected O, but got Unknown
+			Action val = this.m_StatusChanged;
+			Action val2;
+			do
+			{
+				val2 = val;
+				Action val3 = (Action)System.Delegate.Remove((System.Delegate)(object)val2, (System.Delegate)(object)value);
+				val = Interlocked.CompareExchange<Action>(ref this.m_StatusChanged, val3, val2);
+			}
+			while (val != val2);
+		}
+	}
+
+	public virtual bool IsAllowed(IRunState runState)
+	{
+		return true;
+	}
+
+	protected static bool IsBeforeAct3TreasureChest(IRunState runState)
+	{
+		int num = ((((System.Collections.Generic.IReadOnlyCollection<Player>)runState.Players).Count > 1) ? 38 : 41);
+		return runState.TotalFloor < num;
+	}
+
+	public void Flash()
+	{
+		Flash(new <>z__ReadOnlySingleElementList<Creature>(Owner.Creature));
+	}
+
+	public void Flash(System.Collections.Generic.IEnumerable<Creature> targets)
+	{
+		this.Flashed?.Invoke(this, targets);
+	}
+
+	protected void InvokeDisplayAmountChanged()
+	{
+		Action? obj = this.DisplayAmountChanged;
+		if (obj != null)
+		{
+			obj.Invoke();
+		}
+	}
+
+	public void UpdateTexture(TextureRect texture)
+	{
+		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
+		//IL_000c: Expected O, but got Unknown
+		//IL_001b: Unknown result type (might be due to invalid IL or missing references)
+		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0053: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
+		//IL_0091: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00a2: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00b4: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00c5: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00d7: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00e8: Unknown result type (might be due to invalid IL or missing references)
+		//IL_00f3: Unknown result type (might be due to invalid IL or missing references)
+		ShaderMaterial val = (ShaderMaterial)((CanvasItem)texture).Material;
+		val.SetShaderParameter(_isWaxStr, Variant.op_Implicit(IsWax ? 1 : 0));
+		if (IsMelted)
+		{
+			((CanvasItem)texture).SelfModulate = Colors.DarkRed;
+		}
+		if (!RunManager.Instance.IsInProgress || IsMelted)
+		{
+			val.SetShaderParameter(_pulse, Variant.op_Implicit(0));
+			val.SetShaderParameter(_isUsed, Variant.op_Implicit(0));
+			return;
+		}
+		switch (Status)
+		{
+		case RelicStatus.Normal:
+			val.SetShaderParameter(_pulse, Variant.op_Implicit(0));
+			val.SetShaderParameter(_isUsed, Variant.op_Implicit(0));
+			break;
+		case RelicStatus.Active:
+			val.SetShaderParameter(_pulse, Variant.op_Implicit(1));
+			val.SetShaderParameter(_isUsed, Variant.op_Implicit(0));
+			break;
+		case RelicStatus.Disabled:
+			val.SetShaderParameter(_pulse, Variant.op_Implicit(0));
+			val.SetShaderParameter(_isUsed, Variant.op_Implicit(1));
+			break;
+		default:
+			throw new ArgumentOutOfRangeException();
+		}
+	}
+
+	public RelicModel ToMutable()
+	{
+		AssertCanonical();
+		return (RelicModel)MutableClone();
+	}
+
+	protected override void DeepCloneFields()
+	{
+		base.DeepCloneFields();
+		_dynamicVars = DynamicVars.Clone(this);
+	}
+
+	protected override void AfterCloned()
+	{
+		base.AfterCloned();
+		if (_canonicalInstance == null)
+		{
+			CanonicalInstance = ModelDb.GetById<RelicModel>(base.Id);
+		}
+		HasBeenRemovedFromState = false;
+		this.Flashed = null;
+		this.DisplayAmountChanged = null;
+		this.StatusChanged = null;
+	}
+
+	public void RemoveInternal()
+	{
+		HasBeenRemovedFromState = true;
+	}
+
+	public void IncrementStackCount()
+	{
+		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
+		AssertMutable();
+		if (!IsStackable)
+		{
+			throw new InvalidOperationException($"Cannot increment stack count on {base.Id} because it is not a stackable relic.");
+		}
+		StackCount++;
+	}
+
+	public virtual System.Threading.Tasks.Task AfterObtained()
+	{
+		return System.Threading.Tasks.Task.CompletedTask;
+	}
+
+	public virtual System.Threading.Tasks.Task AfterRemoved()
+	{
+		return System.Threading.Tasks.Task.CompletedTask;
+	}
+
+	public SerializableRelic ToSerializable()
+	{
+		AssertMutable();
+		return new SerializableRelic
+		{
+			Id = base.Id,
+			Props = SavedProperties.From(this),
+			FloorAddedToDeck = FloorAddedToDeck
+		};
+	}
+
+	public static RelicModel FromSerializable(SerializableRelic save)
+	{
+		RelicModel relicModel = SaveUtil.RelicOrDeprecated(save.Id).ToMutable();
+		save.Props?.Fill(relicModel);
+		if (save.FloorAddedToDeck.HasValue)
+		{
+			relicModel.FloorAddedToDeck = save.FloorAddedToDeck.Value;
+		}
+		return relicModel;
+	}
+
+	protected void RelicIconChanged()
+	{
+		_resolvedBigIconPath = null;
+	}
+
+	protected static LocString L10NLookup(string entryName)
+	{
+		return new LocString("relics", entryName);
+	}
+}
